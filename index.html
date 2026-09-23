@@ -22,10 +22,15 @@
         }
         .brand-font { font-family: 'Orbitron', sans-serif; }
         
-        .alert-normal { @apply bg-emerald-500/20 border-emerald-500 text-emerald-400; }
-        .alert-fire { @apply bg-red-500/20 border-red-500 text-red-500 animate-pulse; }
-        .alert-flood { @apply bg-blue-500/20 border-blue-500 text-blue-400 animate-pulse; }
-        .alert-landslide { @apply bg-amber-500/20 border-amber-500 text-amber-500 animate-pulse; }
+        .alert-normal { background-color: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399; }
+        .alert-fire { background-color: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .alert-flood { background-color: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #60a5fa; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .alert-landslide { background-color: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
 
         .metric-card {
             background: #1e293b;
@@ -57,13 +62,20 @@
     </header>
 
     <!-- Main Threat Banner -->
-    <div id="threat-banner" class="w-full border-2 rounded-xl p-6 mb-8 text-center alert-normal transition-colors duration-500">
+    <div id="threat-banner" class="w-full border-2 rounded-xl p-6 mb-8 text-center alert-normal transition-colors duration-500 relative overflow-hidden">
+        
+        <!-- NEW: Overall Risk Percentage Badge -->
+        <div class="absolute top-4 right-4 bg-black/40 px-4 py-2 rounded-lg border border-white/10 backdrop-blur-sm">
+            <span class="text-xs uppercase tracking-wider opacity-80 block mb-1">Overall Risk</span>
+            <div class="text-3xl font-black brand-font" id="val-risk">5%</div>
+        </div>
+
         <h2 class="text-2xl font-bold uppercase tracking-widest mb-2" id="threat-title">System Normal</h2>
         <p class="text-lg opacity-80" id="threat-desc">No imminent environmental threats detected by Edge Nodes.</p>
     </div>
 
     <!-- Live Metrics Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         
         <!-- Temp -->
         <div class="metric-card rounded-xl p-6 relative overflow-hidden">
@@ -104,17 +116,32 @@
                 <span class="text-slate-500 mb-1">ppm</span>
             </div>
         </div>
+
+        <!-- NEW: Vibration Metric -->
+        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
+            <i class="fa-solid fa-house-crack absolute top-6 right-6 text-3xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold mb-1">Vibration (Tilt)</h3>
+            <div class="flex items-end gap-2">
+                <span class="text-4xl font-bold brand-font" id="val-vib">--</span>
+                <span class="text-slate-500 mb-1">g</span>
+            </div>
+        </div>
     </div>
 
     <script>
         // ==========================================
-        // SUPABASE DETAILS INTEGRATED
+        // CONFIGURATION
         // ==========================================
         const SUPABASE_URL = 'https://gnqucqttkrfijqnawgfy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXVjcXR0a3JmaWpxbmF3Z2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNTU4MzcsImV4cCI6MjEwNTczMTgzN30.MaCiWeev8l3eLxNAPn010tMF2pAKnfrwxtM2wkvxiK4';
+        
+        // ⚠️ PASTE YOUR MACRODROID URL HERE ⚠️
+        const MACRODROID_URL = 'PASTE_YOUR_MACRODROID_URL_HERE';
 
-        // Fix: Renamed the variable to 'supabaseClient' to avoid SyntaxError
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // State trackers
+        let lastStatus = 'normal';
 
         // UI Elements
         const banner = document.getElementById('threat-banner');
@@ -123,39 +150,59 @@
         const icon = document.getElementById('header-icon');
 
         function updateUI(data) {
-            // Update Metrics
-            document.getElementById('val-temp').innerText = data.temperature ? data.temperature.toFixed(1) : '--';
-            document.getElementById('val-hum').innerText = data.humidity ? data.humidity.toFixed(1) : '--';
-            document.getElementById('val-water').innerText = data.water_clearance ? data.water_clearance.toFixed(1) : '--';
-            document.getElementById('val-gas').innerText = data.gas ? data.gas.toFixed(0) : '--';
+            // FIXED: Using !== undefined so '0' doesn't get ignored!
+            document.getElementById('val-temp').innerText = (data.temperature !== undefined && data.temperature !== null) ? data.temperature.toFixed(1) : '--';
+            document.getElementById('val-hum').innerText = (data.humidity !== undefined && data.humidity !== null) ? data.humidity.toFixed(1) : '--';
+            document.getElementById('val-water').innerText = (data.water_clearance !== undefined && data.water_clearance !== null) ? data.water_clearance.toFixed(1) : '--';
+            document.getElementById('val-gas').innerText = (data.gas !== undefined && data.gas !== null) ? data.gas.toFixed(0) : '--';
+            
+            // NEW: Handle Vibration (mocks it based on status if not in DB yet)
+            let vib = data.vibration !== undefined ? data.vibration.toFixed(2) : (data.status === 'landslide_risk' ? '2.45' : '0.02');
+            document.getElementById('val-vib').innerText = vib;
 
-            // Update Time
             const date = new Date(data.created_at || Date.now());
             document.getElementById('last-updated').innerText = 'Last update: ' + date.toLocaleTimeString();
 
-            // Reset Banner Classes
             banner.className = 'w-full border-2 rounded-xl p-6 mb-8 text-center transition-colors duration-500';
             icon.className = 'fa-solid fa-shield-halved mr-2';
 
-            // Handle AI Status Logic
-            const status = data.status ? data.status.toLowerCase() : 'normal';
+            const currentStatus = data.status ? data.status.toLowerCase() : 'normal';
             
-            if (status.includes('fire')) {
+            // Trigger MacroDroid ONLY if status changes from normal to a hazard
+            if (currentStatus !== 'normal' && lastStatus === 'normal') {
+                console.log("Triggering SMS Alert...");
+                if (MACRODROID_URL !== 'PASTE_YOUR_MACRODROID_URL_HERE') {
+                    fetch(MACRODROID_URL, { mode: 'no-cors' }).catch(err => console.log(err));
+                }
+            }
+            // Update the tracker
+            lastStatus = currentStatus;
+            
+            // Visual Updates
+            if (currentStatus.includes('fire')) {
+                document.getElementById('val-risk').innerText = '92%';
+                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-red-400';
                 banner.classList.add('alert-fire');
                 title.innerText = 'CRITICAL: FIRE RISK DETECTED';
                 desc.innerText = 'Thermal & Gas anomalies indicate severe fire risk. Evacuation protocols initiated.';
                 icon.classList.add('text-red-500');
-            } else if (status.includes('flood')) {
+            } else if (currentStatus.includes('flood')) {
+                document.getElementById('val-risk').innerText = '88%';
+                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-blue-400';
                 banner.classList.add('alert-flood');
                 title.innerText = 'WARNING: FLASH FLOOD RISK';
                 desc.innerText = 'Rapid water clearance reduction detected. Move to higher ground immediately.';
                 icon.classList.add('text-blue-500');
-            } else if (status.includes('landslide')) {
+            } else if (currentStatus.includes('landslide')) {
+                document.getElementById('val-risk').innerText = '85%';
+                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-amber-400';
                 banner.classList.add('alert-landslide');
                 title.innerText = 'WARNING: LANDSLIDE RISK';
                 desc.innerText = 'Soil saturation and vibration anomalies detected. Unstable terrain.';
                 icon.classList.add('text-amber-500');
             } else {
+                document.getElementById('val-risk').innerText = '5%';
+                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-emerald-400';
                 banner.classList.add('alert-normal');
                 title.innerText = 'System Normal';
                 desc.innerText = 'All environmental metrics within safe baseline parameters.';
@@ -163,29 +210,22 @@
             }
         }
 
-        // 1. Fetch the absolute latest reading on load
         async function fetchInitialData() {
-            const { data, error } = await supabaseClient
+            const { data, error } = await db
                 .from('sensor_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1);
-            
-            if (data && data.length > 0) {
-                updateUI(data[0]);
-            }
+            if (data && data.length > 0) updateUI(data[0]);
         }
 
-        // 2. Subscribe to REALTIME WebSocket changes
-        const channel = supabaseClient
+        const channel = db
             .channel('public:sensor_logs')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => {
-                console.log('New data received!', payload.new);
                 updateUI(payload.new);
             })
             .subscribe();
 
-        // Start
         fetchInitialData();
     </script>
 </body>
