@@ -1,0 +1,193 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAKSHAK | Early Warning System</title>
+    <!-- Tailwind CSS for rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .brand-font { font-family: 'Orbitron', sans-serif; }
+        
+        .alert-normal { @apply bg-emerald-500/20 border-emerald-500 text-emerald-400; }
+        .alert-fire { @apply bg-red-500/20 border-red-500 text-red-500 animate-pulse; }
+        .alert-flood { @apply bg-blue-500/20 border-blue-500 text-blue-400 animate-pulse; }
+        .alert-landslide { @apply bg-amber-500/20 border-amber-500 text-amber-500 animate-pulse; }
+
+        .metric-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+        <div>
+            <h1 class="text-4xl font-black brand-font tracking-wider text-white">
+                <i class="fa-solid fa-shield-halved text-emerald-500 mr-2" id="header-icon"></i>RAKSHAK
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">Autonomous Edge-AI Disaster Node</p>
+        </div>
+        <div class="text-right">
+            <div class="flex items-center gap-2 text-sm font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                Live WebSocket Active
+            </div>
+            <p class="text-xs text-slate-500 mt-1" id="last-updated">Waiting for data...</p>
+        </div>
+    </header>
+
+    <!-- Main Threat Banner -->
+    <div id="threat-banner" class="w-full border-2 rounded-xl p-6 mb-8 text-center alert-normal transition-colors duration-500">
+        <h2 class="text-2xl font-bold uppercase tracking-widest mb-2" id="threat-title">System Normal</h2>
+        <p class="text-lg opacity-80" id="threat-desc">No imminent environmental threats detected by Edge Nodes.</p>
+    </div>
+
+    <!-- Live Metrics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <!-- Temp -->
+        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
+            <i class="fa-solid fa-temperature-three-quarters absolute top-6 right-6 text-3xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold mb-1">Temperature</h3>
+            <div class="flex items-end gap-2">
+                <span class="text-4xl font-bold brand-font" id="val-temp">--</span>
+                <span class="text-slate-500 mb-1">°C</span>
+            </div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
+            <i class="fa-solid fa-droplet absolute top-6 right-6 text-3xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold mb-1">Humidity</h3>
+            <div class="flex items-end gap-2">
+                <span class="text-4xl font-bold brand-font" id="val-hum">--</span>
+                <span class="text-slate-500 mb-1">%</span>
+            </div>
+        </div>
+
+        <!-- Water Clearance -->
+        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
+            <i class="fa-solid fa-water absolute top-6 right-6 text-3xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold mb-1">Water Clearance</h3>
+            <div class="flex items-end gap-2">
+                <span class="text-4xl font-bold brand-font" id="val-water">--</span>
+                <span class="text-slate-500 mb-1">cm</span>
+            </div>
+        </div>
+
+        <!-- Gas/Air Quality -->
+        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
+            <i class="fa-solid fa-smog absolute top-6 right-6 text-3xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold mb-1">Gas / Smoke (AQI)</h3>
+            <div class="flex items-end gap-2">
+                <span class="text-4xl font-bold brand-font" id="val-gas">--</span>
+                <span class="text-slate-500 mb-1">ppm</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // SUPABASE DETAILS INTEGRATED
+        // ==========================================
+        const SUPABASE_URL = 'https://gnqucqttkrfijqnawgfy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXVjcXR0a3JmaWpxbmF3Z2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNTU4MzcsImV4cCI6MjEwNTczMTgzN30.MaCiWeev8l3eLxNAPn010tMF2pAKnfrwxtM2wkvxiK4';
+
+        // Fix: Renamed the variable to 'supabaseClient' to avoid SyntaxError
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // UI Elements
+        const banner = document.getElementById('threat-banner');
+        const title = document.getElementById('threat-title');
+        const desc = document.getElementById('threat-desc');
+        const icon = document.getElementById('header-icon');
+
+        function updateUI(data) {
+            // Update Metrics
+            document.getElementById('val-temp').innerText = data.temperature ? data.temperature.toFixed(1) : '--';
+            document.getElementById('val-hum').innerText = data.humidity ? data.humidity.toFixed(1) : '--';
+            document.getElementById('val-water').innerText = data.water_clearance ? data.water_clearance.toFixed(1) : '--';
+            document.getElementById('val-gas').innerText = data.gas ? data.gas.toFixed(0) : '--';
+
+            // Update Time
+            const date = new Date(data.created_at || Date.now());
+            document.getElementById('last-updated').innerText = 'Last update: ' + date.toLocaleTimeString();
+
+            // Reset Banner Classes
+            banner.className = 'w-full border-2 rounded-xl p-6 mb-8 text-center transition-colors duration-500';
+            icon.className = 'fa-solid fa-shield-halved mr-2';
+
+            // Handle AI Status Logic
+            const status = data.status ? data.status.toLowerCase() : 'normal';
+            
+            if (status.includes('fire')) {
+                banner.classList.add('alert-fire');
+                title.innerText = 'CRITICAL: FIRE RISK DETECTED';
+                desc.innerText = 'Thermal & Gas anomalies indicate severe fire risk. Evacuation protocols initiated.';
+                icon.classList.add('text-red-500');
+            } else if (status.includes('flood')) {
+                banner.classList.add('alert-flood');
+                title.innerText = 'WARNING: FLASH FLOOD RISK';
+                desc.innerText = 'Rapid water clearance reduction detected. Move to higher ground immediately.';
+                icon.classList.add('text-blue-500');
+            } else if (status.includes('landslide')) {
+                banner.classList.add('alert-landslide');
+                title.innerText = 'WARNING: LANDSLIDE RISK';
+                desc.innerText = 'Soil saturation and vibration anomalies detected. Unstable terrain.';
+                icon.classList.add('text-amber-500');
+            } else {
+                banner.classList.add('alert-normal');
+                title.innerText = 'System Normal';
+                desc.innerText = 'All environmental metrics within safe baseline parameters.';
+                icon.classList.add('text-emerald-500');
+            }
+        }
+
+        // 1. Fetch the absolute latest reading on load
+        async function fetchInitialData() {
+            const { data, error } = await supabaseClient
+                .from('sensor_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (data && data.length > 0) {
+                updateUI(data[0]);
+            }
+        }
+
+        // 2. Subscribe to REALTIME WebSocket changes
+        const channel = supabaseClient
+            .channel('public:sensor_logs')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => {
+                console.log('New data received!', payload.new);
+                updateUI(payload.new);
+            })
+            .subscribe();
+
+        // Start
+        fetchInitialData();
+    </script>
+</body>
+</html>
+```
