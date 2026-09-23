@@ -64,7 +64,7 @@
     <!-- Main Threat Banner -->
     <div id="threat-banner" class="w-full border-2 rounded-xl p-6 mb-8 text-center alert-normal transition-colors duration-500 relative overflow-hidden">
         
-        <!-- NEW: Overall Risk Percentage Badge -->
+        <!-- Overall Risk Percentage Badge -->
         <div class="absolute top-4 right-4 bg-black/40 px-4 py-2 rounded-lg border border-white/10 backdrop-blur-sm">
             <span class="text-xs uppercase tracking-wider opacity-80 block mb-1">Overall Risk</span>
             <div class="text-3xl font-black brand-font" id="val-risk">5%</div>
@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <!-- NEW: Vibration Metric -->
+        <!-- Vibration Metric -->
         <div class="metric-card rounded-xl p-6 relative overflow-hidden">
             <i class="fa-solid fa-house-crack absolute top-6 right-6 text-3xl opacity-10"></i>
             <h3 class="text-slate-400 font-semibold mb-1">Vibration (Tilt)</h3>
@@ -135,28 +135,24 @@
         const SUPABASE_URL = 'https://gnqucqttkrfijqnawgfy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXVjcXR0a3JmaWpxbmF3Z2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNTU4MzcsImV4cCI6MjEwNTczMTgzN30.MaCiWeev8l3eLxNAPn010tMF2pAKnfrwxtM2wkvxiK4';
         
-        // ⚠️ PASTE YOUR MACRODROID URL HERE ⚠️
+        // ⚠️ PASTE YOUR MACRODROID URL HERE (Do NOT add ?threat= to this part, the code does it automatically!) ⚠️
         const MACRODROID_URL = 'PASTE_YOUR_MACRODROID_URL_HERE';
 
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // State trackers
         let lastStatus = 'normal';
 
-        // UI Elements
         const banner = document.getElementById('threat-banner');
         const title = document.getElementById('threat-title');
         const desc = document.getElementById('threat-desc');
         const icon = document.getElementById('header-icon');
 
         function updateUI(data) {
-            // FIXED: Using !== undefined so '0' doesn't get ignored!
             document.getElementById('val-temp').innerText = (data.temperature !== undefined && data.temperature !== null) ? data.temperature.toFixed(1) : '--';
             document.getElementById('val-hum').innerText = (data.humidity !== undefined && data.humidity !== null) ? data.humidity.toFixed(1) : '--';
             document.getElementById('val-water').innerText = (data.water_clearance !== undefined && data.water_clearance !== null) ? data.water_clearance.toFixed(1) : '--';
             document.getElementById('val-gas').innerText = (data.gas !== undefined && data.gas !== null) ? data.gas.toFixed(0) : '--';
             
-            // NEW: Handle Vibration (mocks it based on status if not in DB yet)
             let vib = data.vibration !== undefined ? data.vibration.toFixed(2) : (data.status === 'landslide_risk' ? '2.45' : '0.02');
             document.getElementById('val-vib').innerText = vib;
 
@@ -168,14 +164,20 @@
 
             const currentStatus = data.status ? data.status.toLowerCase() : 'normal';
             
-            // Trigger MacroDroid ONLY if status changes from normal to a hazard
+            // DYNAMIC SMS LOGIC: Determines specific threat name for SMS
             if (currentStatus !== 'normal' && lastStatus === 'normal') {
-                console.log("Triggering SMS Alert...");
+                let threatName = "HAZARD";
+                if (currentStatus.includes('fire')) threatName = "FOREST FIRE";
+                else if (currentStatus.includes('flood')) threatName = "FLASH FLOOD";
+                else if (currentStatus.includes('landslide')) threatName = "LANDSLIDE";
+
+                console.log("Triggering Dynamic SMS Alert for: " + threatName);
                 if (MACRODROID_URL !== 'PASTE_YOUR_MACRODROID_URL_HERE') {
-                    fetch(MACRODROID_URL, { mode: 'no-cors' }).catch(err => console.log(err));
+                    // Appends the specific threat to the end of your webhook URL
+                    const dynamicUrl = MACRODROID_URL + "?threat=" + encodeURIComponent(threatName);
+                    fetch(dynamicUrl, { mode: 'no-cors' }).catch(err => console.log(err));
                 }
             }
-            // Update the tracker
             lastStatus = currentStatus;
             
             // Visual Updates
