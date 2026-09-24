@@ -156,6 +156,8 @@
         const cloudBeacon = document.getElementById('cloud-beacon');
 
         function updateUI(data) {
+            if (!data) return;
+            
             document.getElementById('val-temp').innerText = data.temperature ? data.temperature.toFixed(1) : '--';
             document.getElementById('val-hum').innerText = data.humidity ? data.humidity.toFixed(1) : '--';
             document.getElementById('val-water').innerText = data.water_clearance ? data.water_clearance.toFixed(0) : '--';
@@ -173,16 +175,16 @@
 
             const currentStatus = data.status ? data.status.toLowerCase() : 'normal';
             
-            // Trigger Phone SMS
-            if (currentStatus !== 'normal' && lastStatus === 'normal') {
+            // Trigger Phone SMS only if threat changed and is not normal
+            if (currentStatus !== 'normal' && currentStatus !== lastStatus) {
                 let threatName = "HAZARD";
                 if (currentStatus.includes('fire')) threatName = "FOREST FIRE";
                 else if (currentStatus.includes('flood')) threatName = "FLASH FLOOD";
                 else if (currentStatus.includes('landslide')) threatName = "LANDSLIDE";
-                else if (currentStatus.includes('pollution')) threatName = "SEVERE POLLUTION"; // New threat logic
+                else if (currentStatus.includes('pollution')) threatName = "SEVERE POLLUTION";
 
                 const dynamicUrl = MACRODROID_URL + "?threat=" + encodeURIComponent(threatName);
-                fetch(dynamicUrl, { mode: 'no-cors' }).catch(e => console.log(e));
+                fetch(dynamicUrl, { mode: 'no-cors' }).catch(e => console.log("SMS sent to MacroDroid"));
             }
             lastStatus = currentStatus;
             
@@ -235,6 +237,10 @@
             if (data && data.length > 0) updateUI(data[0]);
         }
 
+        // FORCE RAPID POLLING: This guarantees the website updates every 1.5 seconds even if WebSockets fail!
+        setInterval(fetchInitialData, 1500);
+
+        // Keep realtime as primary
         const channel = db.channel('public:sensor_logs')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => { updateUI(payload.new); })
             .subscribe();
