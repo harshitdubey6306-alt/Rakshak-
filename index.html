@@ -5,207 +5,215 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAKSHAK | Early Warning System</title>
-    <!-- Tailwind CSS for rapid styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .brand-font { font-family: 'Orbitron', sans-serif; }
         
-        .alert-normal { background-color: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399; }
-        .alert-fire { background-color: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .alert-flood { background-color: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #60a5fa; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .alert-landslide { background-color: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .alert-normal { background-color: rgba(16, 185, 129, 0.15); border-color: #10b981; color: #34d399; }
+        .alert-fire { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #ef4444; animation: borderPulseFire 2s infinite; }
+        .alert-flood { background-color: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; animation: borderPulseFlood 2s infinite; }
+        .alert-landslide { background-color: rgba(245, 158, 11, 0.15); border-color: #f59e0b; color: #fbbf24; animation: borderPulseLandslide 2s infinite; }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .7; }
-        }
+        @keyframes borderPulseFire { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 0 20px 5px rgba(239,68,68,0.5); } }
+        @keyframes borderPulseFlood { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } 50% { box-shadow: 0 0 20px 5px rgba(59,130,246,0.5); } }
+        @keyframes borderPulseLandslide { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 20px 5px rgba(245,158,11,0.5); } }
 
-        .metric-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            transition: all 0.3s ease;
-        }
+        .metric-card { background: #1e293b; border: 1px solid #334155; transition: all 0.3s ease; }
+        
+        /* Map Animations */
+        @keyframes pulseNormal { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        @keyframes pulseFire { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        @keyframes pulseFlood { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+        @keyframes pulseLandslide { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+        
+        .beacon-cloud { width: 14px; height: 14px; border-radius: 50%; position: absolute; top: 55%; left: 45%; transform: translate(-50%, -50%); transition: all 0.5s; z-index: 10;}
+        .status-normal { background: #10b981; animation: pulseNormal 2s infinite; }
+        .status-fire { background: #ef4444; animation: pulseFire 1s infinite; }
+        .status-flood { background: #3b82f6; animation: pulseFlood 1s infinite; }
+        .status-landslide { background: #f59e0b; animation: pulseLandslide 1s infinite; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-8">
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+    <header class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
         <div>
             <h1 class="text-4xl font-black brand-font tracking-wider text-white">
                 <i class="fa-solid fa-shield-halved text-emerald-500 mr-2" id="header-icon"></i>RAKSHAK
             </h1>
-            <p class="text-slate-400 text-sm mt-1">Autonomous Edge-AI Disaster Node</p>
+            <p class="text-slate-400 text-sm mt-1">Autonomous Edge-AI Disaster Node - Central Control</p>
         </div>
-        <div class="text-right">
+        <div class="text-right hidden md:block">
             <div class="flex items-center gap-2 text-sm font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">
                 <span class="relative flex h-3 w-3">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
-                Live WebSocket Active
+                Live Database Sync
             </div>
-            <p class="text-xs text-slate-500 mt-1" id="last-updated">Waiting for data...</p>
+            <p class="text-xs text-slate-500 mt-1" id="last-updated">Waiting for telemetry...</p>
         </div>
     </header>
 
-    <!-- Main Threat Banner -->
-    <div id="threat-banner" class="w-full border-2 rounded-xl p-6 mb-8 text-center alert-normal transition-colors duration-500 relative overflow-hidden">
+    <!-- Top Section: Map & Banner -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         
-        <!-- Overall Risk Percentage Badge -->
-        <div class="absolute top-4 right-4 bg-black/40 px-4 py-2 rounded-lg border border-white/10 backdrop-blur-sm">
-            <span class="text-xs uppercase tracking-wider opacity-80 block mb-1">Overall Risk</span>
-            <div class="text-3xl font-black brand-font" id="val-risk">5%</div>
+        <!-- Live Node Location Map -->
+        <div class="metric-card rounded-xl p-4 flex flex-col items-center relative col-span-1 border-2 border-slate-700">
+            <h3 class="text-slate-400 font-semibold mb-2 w-full text-left text-xs uppercase tracking-widest"><i class="fa-solid fa-location-dot mr-2"></i>Node Deployment Map</h3>
+            <div class="relative w-full max-w-[200px] mt-2">
+                <svg viewBox="0 0 450 520" style="width:100%; opacity: 0.3; fill:#334155; stroke:#64748b; stroke-width:3; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));">
+                    <path d="M194 0l16 19 28-2 15 15 2 24 19 8 16-6 19 20-3 15 18 10 2 22-16 11-4 22 28 32-15 16 12 18-5 18 13 9 1 12 17-6 12 13-3 17-15 11 1 20-17 19-3 26 15 17-15 24-2 22 17 2 6 25-10 13-17-7-10 7-9 19-14 3-17 16-2 15-30 20-7 29-22 36-21 21-17-1-20-19-14-6-15-22-12-8 3-18-18-29-10-38 1-32-13-10-21-25-13-16-16-16-10-42-12-16-30-7-15-20-22-26-8-27-22-9-19-15-7-2-26 13-11 5-21-6-19 7-23-4-26-17-6-15-23-22-3-22-23-4-23 2-25 10-18 13-13-3-26 2-15-10-12 10-8-5-17 3-17 15-18 13-16 10-26 17-16-5-16 17-5 13-14 6-27-4-19 12-15 21 8 16-17 9-16 16-7 14 7 13 4 19 19 16 14 6 12-7 17 8 11-5 19 6 6-1 12 9 8z"/>
+                </svg>
+                <div id="cloud-beacon" class="beacon-cloud status-normal"></div>
+            </div>
         </div>
 
-        <h2 class="text-2xl font-bold uppercase tracking-widest mb-2" id="threat-title">System Normal</h2>
-        <p class="text-lg opacity-80" id="threat-desc">No imminent environmental threats detected by Edge Nodes.</p>
+        <!-- Main Threat Banner -->
+        <div id="threat-banner" class="col-span-1 lg:col-span-2 border-2 rounded-xl p-8 flex flex-col justify-center items-center alert-normal transition-all duration-500 relative overflow-hidden text-center">
+            
+            <div class="absolute top-4 right-4 bg-black/40 px-4 py-2 rounded-lg border border-white/10 backdrop-blur-md">
+                <span class="text-xs uppercase tracking-wider opacity-80 block mb-1 text-slate-300">Overall Risk</span>
+                <div class="text-4xl font-black brand-font" id="val-risk">5%</div>
+            </div>
+
+            <h2 class="text-3xl md:text-4xl font-bold uppercase tracking-widest mb-4" id="threat-title">System Normal</h2>
+            <p class="text-lg md:text-xl opacity-90 max-w-2xl" id="threat-desc">No imminent environmental threats detected by Edge Nodes.</p>
+        </div>
+
     </div>
 
     <!-- Live Metrics Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         
-        <!-- Temp -->
-        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
-            <i class="fa-solid fa-temperature-three-quarters absolute top-6 right-6 text-3xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold mb-1">Temperature</h3>
-            <div class="flex items-end gap-2">
-                <span class="text-4xl font-bold brand-font" id="val-temp">--</span>
+        <div class="metric-card rounded-xl p-5 relative overflow-hidden">
+            <i class="fa-solid fa-temperature-three-quarters absolute top-4 right-4 text-2xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Temperature</h3>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-bold brand-font" id="val-temp">--</span>
                 <span class="text-slate-500 mb-1">°C</span>
             </div>
         </div>
 
-        <!-- Humidity -->
-        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
-            <i class="fa-solid fa-droplet absolute top-6 right-6 text-3xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold mb-1">Humidity</h3>
-            <div class="flex items-end gap-2">
-                <span class="text-4xl font-bold brand-font" id="val-hum">--</span>
+        <div class="metric-card rounded-xl p-5 relative overflow-hidden">
+            <i class="fa-solid fa-droplet absolute top-4 right-4 text-2xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Humidity</h3>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-bold brand-font" id="val-hum">--</span>
                 <span class="text-slate-500 mb-1">%</span>
             </div>
         </div>
 
-        <!-- Water Clearance -->
-        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
-            <i class="fa-solid fa-water absolute top-6 right-6 text-3xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold mb-1">Water Clearance</h3>
-            <div class="flex items-end gap-2">
-                <span class="text-4xl font-bold brand-font" id="val-water">--</span>
+        <div class="metric-card rounded-xl p-5 relative overflow-hidden">
+            <i class="fa-solid fa-water absolute top-4 right-4 text-2xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Water Depth</h3>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-bold brand-font" id="val-water">--</span>
                 <span class="text-slate-500 mb-1">cm</span>
             </div>
         </div>
 
-        <!-- Gas/Air Quality -->
-        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
-            <i class="fa-solid fa-smog absolute top-6 right-6 text-3xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold mb-1">Gas / Smoke (AQI)</h3>
-            <div class="flex items-end gap-2">
-                <span class="text-4xl font-bold brand-font" id="val-gas">--</span>
+        <div class="metric-card rounded-xl p-5 relative overflow-hidden">
+            <i class="fa-solid fa-smog absolute top-4 right-4 text-2xl opacity-10"></i>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Gas (MQ-135)</h3>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-bold brand-font" id="val-gas">--</span>
                 <span class="text-slate-500 mb-1">ppm</span>
             </div>
         </div>
 
-        <!-- Vibration Metric -->
-        <div class="metric-card rounded-xl p-6 relative overflow-hidden">
-            <i class="fa-solid fa-house-crack absolute top-6 right-6 text-3xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold mb-1">Vibration (Tilt)</h3>
-            <div class="flex items-end gap-2">
-                <span class="text-4xl font-bold brand-font" id="val-vib">--</span>
+        <div class="metric-card rounded-xl p-5 relative overflow-hidden col-span-2 lg:col-span-1 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+            <i class="fa-solid fa-house-crack absolute top-4 right-4 text-2xl opacity-10 text-emerald-500"></i>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Vibration</h3>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-bold brand-font text-emerald-400" id="val-vib">--</span>
                 <span class="text-slate-500 mb-1">g</span>
             </div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURATION
-        // ==========================================
         const SUPABASE_URL = 'https://gnqucqttkrfijqnawgfy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXVjcXR0a3JmaWpxbmF3Z2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNTU4MzcsImV4cCI6MjEwNTczMTgzN30.MaCiWeev8l3eLxNAPn010tMF2pAKnfrwxtM2wkvxiK4';
-        
-        // Custom URL embedded here
-        const MACRODROID_URL = 'https://trigger.macrodroid.com/0e56f7cc-ce01-43fc-bff7-e9b751ea4195/Rakshak';
+        const MACRODROID_URL = 'https://trigger.macrodroid.com/0e56f7cc-ce01-43fc-bff7-e9b751ea4195/rakshak';
 
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         let lastStatus = 'normal';
 
         const banner = document.getElementById('threat-banner');
         const title = document.getElementById('threat-title');
         const desc = document.getElementById('threat-desc');
         const icon = document.getElementById('header-icon');
+        const cloudBeacon = document.getElementById('cloud-beacon');
 
         function updateUI(data) {
-            document.getElementById('val-temp').innerText = (data.temperature !== undefined && data.temperature !== null) ? data.temperature.toFixed(1) : '--';
-            document.getElementById('val-hum').innerText = (data.humidity !== undefined && data.humidity !== null) ? data.humidity.toFixed(1) : '--';
-            document.getElementById('val-water').innerText = (data.water_clearance !== undefined && data.water_clearance !== null) ? data.water_clearance.toFixed(1) : '--';
-            document.getElementById('val-gas').innerText = (data.gas !== undefined && data.gas !== null) ? data.gas.toFixed(0) : '--';
+            document.getElementById('val-temp').innerText = data.temperature ? data.temperature.toFixed(1) : '--';
+            document.getElementById('val-hum').innerText = data.humidity ? data.humidity.toFixed(1) : '--';
+            document.getElementById('val-water').innerText = data.water_clearance ? data.water_clearance.toFixed(0) : '--';
+            document.getElementById('val-gas').innerText = data.gas ? data.gas.toFixed(0) : '--';
             
-            let vib = data.vibration !== undefined ? data.vibration.toFixed(2) : (data.status === 'landslide_risk' ? '2.45' : '0.02');
-            document.getElementById('val-vib').innerText = vib;
+            // Safe fallback for old database rows that might not have vibration
+            let vib = data.vibration !== undefined && data.vibration !== null ? data.vibration : 0.02;
+            document.getElementById('val-vib').innerText = vib.toFixed(2);
 
             const date = new Date(data.created_at || Date.now());
-            document.getElementById('last-updated').innerText = 'Last update: ' + date.toLocaleTimeString();
+            document.getElementById('last-updated').innerText = 'Last telemetry: ' + date.toLocaleTimeString();
 
-            banner.className = 'w-full border-2 rounded-xl p-6 mb-8 text-center transition-colors duration-500';
+            // Reset classes
+            banner.className = 'col-span-1 lg:col-span-2 border-2 rounded-xl p-8 flex flex-col justify-center items-center transition-all duration-500 relative overflow-hidden text-center';
             icon.className = 'fa-solid fa-shield-halved mr-2';
+            cloudBeacon.className = 'beacon-cloud';
 
             const currentStatus = data.status ? data.status.toLowerCase() : 'normal';
             
-            // DYNAMIC SMS LOGIC: Determines specific threat name for SMS
+            // Trigger Phone SMS
             if (currentStatus !== 'normal' && lastStatus === 'normal') {
                 let threatName = "HAZARD";
                 if (currentStatus.includes('fire')) threatName = "FOREST FIRE";
                 else if (currentStatus.includes('flood')) threatName = "FLASH FLOOD";
                 else if (currentStatus.includes('landslide')) threatName = "LANDSLIDE";
 
-                console.log("Triggering Dynamic SMS Alert for: " + threatName);
-                if (MACRODROID_URL !== 'PASTE_YOUR_MACRODROID_URL_HERE') {
-                    // Appends the specific threat to the end of your webhook URL
-                    const dynamicUrl = MACRODROID_URL + "?threat=" + encodeURIComponent(threatName);
-                    fetch(dynamicUrl, { mode: 'no-cors' }).catch(err => console.log(err));
-                }
+                const dynamicUrl = MACRODROID_URL + "?threat=" + encodeURIComponent(threatName);
+                fetch(dynamicUrl, { mode: 'no-cors' }).catch(e => console.log(e));
             }
             lastStatus = currentStatus;
             
-            // Visual Updates
+            // Visuals
             if (currentStatus.includes('fire')) {
                 document.getElementById('val-risk').innerText = '92%';
-                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-red-400';
+                document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-red-400';
                 banner.classList.add('alert-fire');
+                cloudBeacon.classList.add('status-fire');
                 title.innerText = 'CRITICAL: FIRE RISK DETECTED';
                 desc.innerText = 'Thermal & Gas anomalies indicate severe fire risk. Evacuation protocols initiated.';
                 icon.classList.add('text-red-500');
             } else if (currentStatus.includes('flood')) {
                 document.getElementById('val-risk').innerText = '88%';
-                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-blue-400';
+                document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-blue-400';
                 banner.classList.add('alert-flood');
+                cloudBeacon.classList.add('status-flood');
                 title.innerText = 'WARNING: FLASH FLOOD RISK';
                 desc.innerText = 'Rapid water clearance reduction detected. Move to higher ground immediately.';
                 icon.classList.add('text-blue-500');
             } else if (currentStatus.includes('landslide')) {
                 document.getElementById('val-risk').innerText = '85%';
-                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-amber-400';
+                document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-amber-400';
                 banner.classList.add('alert-landslide');
+                cloudBeacon.classList.add('status-landslide');
                 title.innerText = 'WARNING: LANDSLIDE RISK';
                 desc.innerText = 'Soil saturation and vibration anomalies detected. Unstable terrain.';
                 icon.classList.add('text-amber-500');
             } else {
                 document.getElementById('val-risk').innerText = '5%';
-                document.getElementById('val-risk').className = 'text-3xl font-black brand-font text-emerald-400';
+                document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-emerald-400';
                 banner.classList.add('alert-normal');
+                cloudBeacon.classList.add('status-normal');
                 title.innerText = 'System Normal';
                 desc.innerText = 'All environmental metrics within safe baseline parameters.';
                 icon.classList.add('text-emerald-500');
@@ -213,19 +221,12 @@
         }
 
         async function fetchInitialData() {
-            const { data, error } = await db
-                .from('sensor_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(1);
+            const { data, error } = await db.from('sensor_logs').select('*').order('created_at', { ascending: false }).limit(1);
             if (data && data.length > 0) updateUI(data[0]);
         }
 
-        const channel = db
-            .channel('public:sensor_logs')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => {
-                updateUI(payload.new);
-            })
+        const channel = db.channel('public:sensor_logs')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => { updateUI(payload.new); })
             .subscribe();
 
         fetchInitialData();
