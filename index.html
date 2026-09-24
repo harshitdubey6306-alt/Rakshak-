@@ -19,10 +19,12 @@
         .alert-fire { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #ef4444; animation: borderPulseFire 2s infinite; }
         .alert-flood { background-color: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; animation: borderPulseFlood 2s infinite; }
         .alert-landslide { background-color: rgba(245, 158, 11, 0.15); border-color: #f59e0b; color: #fbbf24; animation: borderPulseLandslide 2s infinite; }
+        .alert-pollution { background-color: rgba(168, 85, 247, 0.15); border-color: #a855f7; color: #c084fc; animation: borderPulsePollution 2s infinite; }
 
         @keyframes borderPulseFire { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 0 20px 5px rgba(239,68,68,0.5); } }
         @keyframes borderPulseFlood { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } 50% { box-shadow: 0 0 20px 5px rgba(59,130,246,0.5); } }
         @keyframes borderPulseLandslide { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 20px 5px rgba(245,158,11,0.5); } }
+        @keyframes borderPulsePollution { 0%, 100% { box-shadow: 0 0 0 0 rgba(168,85,247,0); } 50% { box-shadow: 0 0 20px 5px rgba(168,85,247,0.5); } }
 
         .metric-card { background: #1e293b; border: 1px solid #334155; transition: all 0.3s ease; }
         
@@ -31,12 +33,14 @@
         @keyframes pulseFire { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         @keyframes pulseFlood { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
         @keyframes pulseLandslide { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+        @keyframes pulsePollution { 0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.9); } 70% { box-shadow: 0 0 0 35px rgba(168, 85, 247, 0); } 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); } }
         
         .beacon-cloud { width: 14px; height: 14px; border-radius: 50%; position: absolute; top: 55%; left: 45%; transform: translate(-50%, -50%); transition: all 0.5s; z-index: 10;}
         .status-normal { background: #10b981; animation: pulseNormal 2s infinite; }
         .status-fire { background: #ef4444; animation: pulseFire 1s infinite; }
         .status-flood { background: #3b82f6; animation: pulseFlood 1s infinite; }
         .status-landslide { background: #f59e0b; animation: pulseLandslide 1s infinite; }
+        .status-pollution { background: #a855f7; animation: pulsePollution 1s infinite; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-8">
@@ -86,7 +90,6 @@
             <h2 class="text-3xl md:text-4xl font-bold uppercase tracking-widest mb-4" id="threat-title">System Normal</h2>
             <p class="text-lg md:text-xl opacity-90 max-w-2xl" id="threat-desc">No imminent environmental threats detected by Edge Nodes.</p>
         </div>
-
     </div>
 
     <!-- Live Metrics Grid -->
@@ -121,7 +124,7 @@
 
         <div class="metric-card rounded-xl p-5 relative overflow-hidden">
             <i class="fa-solid fa-smog absolute top-4 right-4 text-2xl opacity-10"></i>
-            <h3 class="text-slate-400 font-semibold text-sm mb-2">Gas (MQ-135)</h3>
+            <h3 class="text-slate-400 font-semibold text-sm mb-2">Gas (MQ-2)</h3>
             <div class="flex items-end gap-1">
                 <span class="text-3xl font-bold brand-font" id="val-gas">--</span>
                 <span class="text-slate-500 mb-1">ppm</span>
@@ -157,8 +160,6 @@
             document.getElementById('val-hum').innerText = data.humidity ? data.humidity.toFixed(1) : '--';
             document.getElementById('val-water').innerText = data.water_clearance ? data.water_clearance.toFixed(0) : '--';
             document.getElementById('val-gas').innerText = data.gas ? data.gas.toFixed(0) : '--';
-            
-            // Safe fallback for old database rows that might not have vibration
             let vib = data.vibration !== undefined && data.vibration !== null ? data.vibration : 0.02;
             document.getElementById('val-vib').innerText = vib.toFixed(2);
 
@@ -178,6 +179,7 @@
                 if (currentStatus.includes('fire')) threatName = "FOREST FIRE";
                 else if (currentStatus.includes('flood')) threatName = "FLASH FLOOD";
                 else if (currentStatus.includes('landslide')) threatName = "LANDSLIDE";
+                else if (currentStatus.includes('pollution')) threatName = "SEVERE POLLUTION"; // New threat logic
 
                 const dynamicUrl = MACRODROID_URL + "?threat=" + encodeURIComponent(threatName);
                 fetch(dynamicUrl, { mode: 'no-cors' }).catch(e => console.log(e));
@@ -209,6 +211,14 @@
                 title.innerText = 'WARNING: LANDSLIDE RISK';
                 desc.innerText = 'Soil saturation and vibration anomalies detected. Unstable terrain.';
                 icon.classList.add('text-amber-500');
+            } else if (currentStatus.includes('pollution')) {
+                document.getElementById('val-risk').innerText = '75%';
+                document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-purple-400';
+                banner.classList.add('alert-pollution');
+                cloudBeacon.classList.add('status-pollution');
+                title.innerText = 'WARNING: SEVERE AIR POLLUTION';
+                desc.innerText = 'Toxic gas concentrations have exceeded safe limits (CPCB Protocol). Avoid outdoor exposure.';
+                icon.classList.add('text-purple-500');
             } else {
                 document.getElementById('val-risk').innerText = '5%';
                 document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-emerald-400';
