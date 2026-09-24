@@ -168,14 +168,12 @@
             const date = new Date(data.created_at || Date.now());
             document.getElementById('last-updated').innerText = 'Last telemetry: ' + date.toLocaleTimeString();
 
-            // Reset classes
             banner.className = 'col-span-1 lg:col-span-2 border-2 rounded-xl p-8 flex flex-col justify-center items-center transition-all duration-500 relative overflow-hidden text-center';
             icon.className = 'fa-solid fa-shield-halved mr-2';
             cloudBeacon.className = 'beacon-cloud';
 
             const currentStatus = data.status ? data.status.toLowerCase() : 'normal';
             
-            // Trigger Phone SMS only if threat changed and is not normal
             if (currentStatus !== 'normal' && currentStatus !== lastStatus) {
                 let threatName = "HAZARD";
                 if (currentStatus.includes('fire')) threatName = "FOREST FIRE";
@@ -188,7 +186,6 @@
             }
             lastStatus = currentStatus;
             
-            // Visuals
             if (currentStatus.includes('fire')) {
                 document.getElementById('val-risk').innerText = '92%';
                 document.getElementById('val-risk').className = 'text-4xl font-black brand-font text-red-400';
@@ -233,14 +230,16 @@
         }
 
         async function fetchInitialData() {
-            const { data, error } = await db.from('sensor_logs').select('*').order('created_at', { ascending: false }).limit(1);
-            if (data && data.length > 0) updateUI(data[0]);
+            try {
+                const { data, error } = await db.from('sensor_logs').select('*').order('created_at', { ascending: false }).limit(1);
+                if (data && data.length > 0) updateUI(data[0]);
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
         }
 
-        // FORCE RAPID POLLING: This guarantees the website updates every 1.5 seconds even if WebSockets fail!
-        setInterval(fetchInitialData, 1500);
+        setInterval(fetchInitialData, 1000);
 
-        // Keep realtime as primary
         const channel = db.channel('public:sensor_logs')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, payload => { updateUI(payload.new); })
             .subscribe();
